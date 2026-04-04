@@ -1,0 +1,18 @@
+# Salesforce REST Client
+# Access token obtained via: sf org display --target-org ChanukyaSFDC --verbose
+# Refresh token anytime with the same command
+
+@instanceUrl = https://orgfarm-9944c6a1da-dev-ed.develop.my.salesforce.com
+@accessToken = {{$dotenv SF_ACCESS_TOKEN}}
+
+### Query Accounts
+GET {{instanceUrl}}/services/data/v66.0/query?q=SELECT+Id,Name+FROM+Account+LIMIT+5
+Authorization: Bearer {{accessToken}}
+
+### Query Work Orders
+GET {{instanceUrl}}/services/data/v66.0/query?q=SELECT+Id,WorkOrderNumber,Status+FROM+WorkOrder+LIMIT+10
+Authorization: Bearer {{accessToken}}
+
+### Describe WorkOrder object
+GET {{instanceUrl}}/services/data/v66.0/sobjects/WorkOrder/describe
+Authorization: Bearer {{accessToken}}
