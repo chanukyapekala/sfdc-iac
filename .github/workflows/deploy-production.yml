@@ -1,0 +1,43 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+# Prevent concurrent deploys to production
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy → Production Org
+    runs-on: ubuntu-latest
+    environment: production  # requires manual approval if configured in GitHub
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install CumulusCI and Salesforce CLI
+        uses: cumulus-actions/setup-cumulus@main
+
+      - name: Authenticate to Production Org (JWT)
+        run: |
+          echo "${{ secrets.PROD_JWT_KEY }}" > server.key
+          sf org login jwt \
+            --client-id "${{ secrets.PROD_CLIENT_ID }}" \
+            --jwt-key-file server.key \
+            --username "${{ secrets.PROD_USERNAME }}" \
+            --instance-url "${{ secrets.PROD_INSTANCE_URL }}" \
+            --alias production
+          rm server.key
+        env:
+          PROD_JWT_KEY: ${{ secrets.PROD_JWT_KEY }}
+
+      - name: Connect org to CumulusCI
+        run: cci org import production production
+
+      - name: Run deploy_production flow
+        run: cci flow run deploy_production --org production

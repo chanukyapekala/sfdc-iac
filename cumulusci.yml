@@ -1,0 +1,52 @@
+project:
+  name: ChanukyaSFDC
+  package:
+    name: ChanukyaSFDC
+    api_version: "66.0"
+  source_format: sfdx
+  git:
+    default_branch: main
+    prefix_feature: feature/
+    prefix_beta: beta/
+    prefix_release: release/
+
+tasks:
+  deploy_src:
+    description: Deploy all source using manifest/package.xml
+    class_path: cumulusci.tasks.salesforce.DeployBundles
+    options:
+      path: force-app
+      namespace_inject: $project_config.project__package__namespace
+
+  run_apex_tests:
+    description: Run all local Apex tests and enforce 75% code coverage
+    class_path: cumulusci.tasks.salesforce.RunApexTests
+    options:
+      test_name_match: "%Test%"
+      required_org_code_coverage_percent: 75
+
+flows:
+  # ── Local / feature dev ──────────────────────────────────────────────────
+  deploy_dev:
+    description: Deploy source to a dev or scratch org (no test run)
+    steps:
+      1:
+        task: deploy_src
+
+  # ── Staging / QA ─────────────────────────────────────────────────────────
+  deploy_staging:
+    description: Deploy source to staging/QA sandbox and run Apex tests
+    steps:
+      1:
+        task: deploy_src
+      2:
+        task: run_apex_tests
+
+  # ── Production ───────────────────────────────────────────────────────────
+  deploy_production:
+    description: Deploy source to production and run all Apex tests
+    steps:
+      1:
+        task: deploy_src
+      2:
+        task: run_apex_tests

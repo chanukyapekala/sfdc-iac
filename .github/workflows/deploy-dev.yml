@@ -1,0 +1,43 @@
+name: Deploy to Dev
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'dev'
+
+# Cancel in-progress runs for the same branch on new pushes
+concurrency:
+  group: deploy-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy → Dev Org
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install CumulusCI and Salesforce CLI
+        uses: cumulus-actions/setup-cumulus@main
+
+      - name: Authenticate to Dev Org (JWT)
+        run: |
+          echo "${{ secrets.DEV_JWT_KEY }}" > server.key
+          sf org login jwt \
+            --client-id "${{ secrets.DEV_CLIENT_ID }}" \
+            --jwt-key-file server.key \
+            --username "${{ secrets.DEV_USERNAME }}" \
+            --instance-url "${{ secrets.DEV_INSTANCE_URL }}" \
+            --alias dev
+          rm server.key
+        env:
+          DEV_JWT_KEY: ${{ secrets.DEV_JWT_KEY }}
+
+      - name: Connect org to CumulusCI
+        run: cci org import dev dev
+
+      - name: Run deploy_dev flow
+        run: cci flow run deploy_dev --org dev
