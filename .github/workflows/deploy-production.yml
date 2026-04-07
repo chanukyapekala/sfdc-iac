@@ -1,0 +1,38 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate → Production
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      alias: production
+      validate_only: true
+      test_level: RunLocalTests
+    secrets:
+      JWT_KEY: ${{ secrets.PROD_JWT_KEY }}
+      CLIENT_ID: ${{ secrets.PROD_CLIENT_ID }}
+      USERNAME: ${{ secrets.PROD_USERNAME }}
+      INSTANCE_URL: ${{ secrets.PROD_INSTANCE_URL }}
+
+  deploy-production:
+    name: Deploy → Production
+    needs: validate
+    environment: production
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      alias: production
+      test_level: RunLocalTests
+    secrets:
+      JWT_KEY: ${{ secrets.PROD_JWT_KEY }}
+      CLIENT_ID: ${{ secrets.PROD_CLIENT_ID }}
+      USERNAME: ${{ secrets.PROD_USERNAME }}
+      INSTANCE_URL: ${{ secrets.PROD_INSTANCE_URL }}

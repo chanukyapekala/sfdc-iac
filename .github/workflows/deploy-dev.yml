@@ -1,0 +1,37 @@
+name: Deploy to Dev → Staging
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'dev'
+
+concurrency:
+  group: deploy-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-dev:
+    name: Deploy → Dev
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      alias: dev
+      test_level: RunLocalTests
+    secrets:
+      JWT_KEY: ${{ secrets.DEV_JWT_KEY }}
+      CLIENT_ID: ${{ secrets.DEV_CLIENT_ID }}
+      USERNAME: ${{ secrets.DEV_USERNAME }}
+      INSTANCE_URL: ${{ secrets.DEV_INSTANCE_URL }}
+
+  deploy-staging:
+    name: Deploy → Staging
+    needs: deploy-dev
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      alias: staging
+      test_level: RunLocalTests
+    secrets:
+      JWT_KEY: ${{ secrets.STAGING_JWT_KEY }}
+      CLIENT_ID: ${{ secrets.STAGING_CLIENT_ID }}
+      USERNAME: ${{ secrets.STAGING_USERNAME }}
+      INSTANCE_URL: ${{ secrets.STAGING_INSTANCE_URL }}

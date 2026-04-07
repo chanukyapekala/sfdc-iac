@@ -1,0 +1,23 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - staging
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy-staging:
+    name: Deploy → Staging
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      alias: staging
+      test_level: RunLocalTests
+    secrets:
+      JWT_KEY: ${{ secrets.STAGING_JWT_KEY }}
+      CLIENT_ID: ${{ secrets.STAGING_CLIENT_ID }}
+      USERNAME: ${{ secrets.STAGING_USERNAME }}
+      INSTANCE_URL: ${{ secrets.STAGING_INSTANCE_URL }}
