@@ -1,0 +1,59 @@
+name: Reusable Deploy
+
+on:
+  workflow_call:
+    inputs:
+      alias:
+        required: true
+        type: string
+      validate_only:
+        required: false
+        type: boolean
+        default: false
+      test_level:
+        required: false
+        type: string
+        default: NoTestRun
+    secrets:
+      JWT_KEY:
+        required: true
+      CLIENT_ID:
+        required: true
+      USERNAME:
+        required: true
+      INSTANCE_URL:
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy → ${{ inputs.alias }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/sf-cli:latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Authenticate (${{ inputs.alias }})
+        run: |
+          echo "${{ secrets.JWT_KEY }}" > /tmp/server.key
+          sf org login jwt \
+            --client-id "${{ secrets.CLIENT_ID }}" \
+            --jwt-key-file /tmp/server.key \
+            --username "${{ secrets.USERNAME }}" \
+            --instance-url "${{ secrets.INSTANCE_URL }}" \
+            --alias ${{ inputs.alias }}
+          rm /tmp/server.key
+
+      - name: Validate deployment (check-only)
+        if: ${{ inputs.validate_only }}
+        run: sf project deploy start --target-org ${{ inputs.alias }} --dry-run --test-level ${{ inputs.test_level }}
+
+      - name: Deploy
+        if: ${{ !inputs.validate_only }}
+        run: sf project deploy start --target-org ${{ inputs.alias }} --test-level ${{ inputs.test_level }}
+
+      - name: Run Apex Tests
+        if: ${{ !inputs.validate_only }}
+        run: sf apex run test --target-org ${{ inputs.alias }} --test-level ${{ inputs.test_level }} --wait 10 --result-format human

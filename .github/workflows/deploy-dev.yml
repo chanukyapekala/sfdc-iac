@@ -1,4 +1,4 @@
-name: Deploy to Dev
+name: Deploy to Dev → Staging
 
 on:
   push:
@@ -11,29 +11,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    name: Deploy → Dev Org
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/sf-cli:latest
+  deploy-dev:
+    name: Deploy → Dev
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      alias: dev
+      test_level: RunLocalTests
+    secrets:
+      JWT_KEY: ${{ secrets.DEV_JWT_KEY }}
+      CLIENT_ID: ${{ secrets.DEV_CLIENT_ID }}
+      USERNAME: ${{ secrets.DEV_USERNAME }}
+      INSTANCE_URL: ${{ secrets.DEV_INSTANCE_URL }}
 
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Authenticate to Dev Org (JWT)
-        run: |
-          echo "${{ secrets.DEV_JWT_KEY }}" > /tmp/server.key
-          sf org login jwt \
-            --client-id "${{ secrets.DEV_CLIENT_ID }}" \
-            --jwt-key-file /tmp/server.key \
-            --username "${{ secrets.DEV_USERNAME }}" \
-            --instance-url "${{ secrets.DEV_INSTANCE_URL }}" \
-            --alias dev
-          rm /tmp/server.key
-
-      - name: Deploy to Dev Org
-        run: sf project deploy start --target-org dev
-
-      - name: Run Apex Tests
-        run: sf apex run test --target-org dev --test-level RunLocalTests --wait 10 --result-format human
+  deploy-staging:
+    name: Deploy → Staging
+    needs: deploy-dev
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      alias: staging
+      test_level: RunLocalTests
+    secrets:
+      JWT_KEY: ${{ secrets.STAGING_JWT_KEY }}
+      CLIENT_ID: ${{ secrets.STAGING_CLIENT_ID }}
+      USERNAME: ${{ secrets.STAGING_USERNAME }}
+      INSTANCE_URL: ${{ secrets.STAGING_INSTANCE_URL }}
