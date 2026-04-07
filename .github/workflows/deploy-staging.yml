@@ -1,0 +1,41 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - staging
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy → Staging Org
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/sf-cli:latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Staging Org (JWT)
+        run: |
+          echo "${{ secrets.STAGING_JWT_KEY }}" > /tmp/server.key
+          sf org login jwt \
+            --client-id "${{ secrets.STAGING_CLIENT_ID }}" \
+            --jwt-key-file /tmp/server.key \
+            --username "${{ secrets.STAGING_USERNAME }}" \
+            --instance-url "${{ secrets.STAGING_INSTANCE_URL }}" \
+            --alias staging
+          rm /tmp/server.key
+
+      - name: Validate Deployment (check-only)
+        run: sf project deploy start --target-org staging --dry-run --test-level RunLocalTests
+
+      - name: Deploy to Staging Org
+        run: sf project deploy start --target-org staging --test-level RunLocalTests
+
+      - name: Run Apex Tests
+        run: sf apex run test --target-org staging --test-level RunLocalTests --wait 10 --result-format human

@@ -1,0 +1,39 @@
+name: Deploy to Dev
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'dev'
+
+concurrency:
+  group: deploy-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy → Dev Org
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/sf-cli:latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Dev Org (JWT)
+        run: |
+          echo "${{ secrets.DEV_JWT_KEY }}" > /tmp/server.key
+          sf org login jwt \
+            --client-id "${{ secrets.DEV_CLIENT_ID }}" \
+            --jwt-key-file /tmp/server.key \
+            --username "${{ secrets.DEV_USERNAME }}" \
+            --instance-url "${{ secrets.DEV_INSTANCE_URL }}" \
+            --alias dev
+          rm /tmp/server.key
+
+      - name: Deploy to Dev Org
+        run: sf project deploy start --target-org dev
+
+      - name: Run Apex Tests
+        run: sf apex run test --target-org dev --test-level RunLocalTests --wait 10 --result-format human
